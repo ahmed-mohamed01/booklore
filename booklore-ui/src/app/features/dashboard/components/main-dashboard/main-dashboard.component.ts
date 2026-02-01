@@ -148,6 +148,78 @@ export class MainDashboardComponent implements OnInit {
     );
   }
 
+  private getNextInSeriesBooks(maxItems: number): Observable<Book[]> {
+    return this.bookService.bookState$.pipe(
+      map((state: BookState) => {
+        const allBooks = state.books || [];
+        const now = new Date().getTime();
+        const twentyFourHoursAgo = now - (24 * 60 * 60 * 1000);
+        const nextInSeries: Book[] = [];
+
+        const seriesGroups = new Map<string, Book[]>();
+        allBooks.forEach(book => {
+          const seriesName = book.metadata?.seriesName?.toLowerCase();
+          if (seriesName && book.metadata?.seriesNumber != null) {
+            if (!seriesGroups.has(seriesName)) {
+              seriesGroups.set(seriesName, []);
+            }
+            seriesGroups.get(seriesName)!.push(book);
+          }
+        });
+
+        seriesGroups.forEach(seriesBooks => {
+          const sortedBooks = [...seriesBooks].sort((a, b) =>
+            (a.metadata?.seriesNumber || 0) - (b.metadata?.seriesNumber || 0)
+          );
+
+          for (let i = 0; i < sortedBooks.length - 1; i++) {
+            const currentBook = sortedBooks[i];
+            const nextBook = sortedBooks[i + 1];
+
+            if (currentBook.readStatus !== ReadStatus.READ) continue;
+
+            if (nextBook.readStatus === ReadStatus.READ ||
+                nextBook.readStatus === ReadStatus.READING ||
+                nextBook.readStatus === ReadStatus.RE_READING) continue;
+
+            if (nextBook.lastReadTime) {
+              const lastRead = new Date(nextBook.lastReadTime).getTime();
+              if (lastRead > twentyFourHoursAgo) continue;
+            }
+
+            nextInSeries.push(nextBook);
+            break;
+          }
+        });
+
+        return nextInSeries
+          .sort((a, b) => {
+            const aPrevFinished = this.getPreviousBookFinishedTime(a, allBooks);
+            const bPrevFinished = this.getPreviousBookFinishedTime(b, allBooks);
+            return bPrevFinished - aPrevFinished;
+          })
+          .slice(0, maxItems);
+      })
+    );
+  }
+
+  private getPreviousBookFinishedTime(book: Book, allBooks: Book[]): number {
+    const seriesName = book.metadata?.seriesName?.toLowerCase();
+    const seriesNumber = book.metadata?.seriesNumber;
+
+    if (!seriesName || seriesNumber == null || seriesNumber <= 1) return 0;
+
+    const previousBook = allBooks.find(b =>
+      b.metadata?.seriesName?.toLowerCase() === seriesName &&
+      b.metadata?.seriesNumber === seriesNumber - 1 &&
+      b.readStatus === ReadStatus.READ
+    );
+
+    return previousBook?.dateFinished
+      ? new Date(previousBook.dateFinished).getTime()
+      : 0;
+  }
+
   getBooksForScroller(config: ScrollerConfig): Observable<Book[]> {
     if (!this.scrollerBooksCache.has(config.id)) {
       let books$: Observable<Book[]>;
@@ -172,6 +244,9 @@ export class MainDashboardComponent implements OnInit {
               return books;
             })
           );
+          break;
+        case ScrollerType.NEXT_IN_SERIES:
+          books$ = this.getNextInSeriesBooks(config.maxItems || DEFAULT_MAX_ITEMS);
           break;
         default:
           books$ = this.bookService.bookState$.pipe(map(() => []));

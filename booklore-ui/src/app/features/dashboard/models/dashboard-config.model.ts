@@ -4,7 +4,8 @@ export enum ScrollerType {
   LAST_READ = 'lastRead',
   LATEST_ADDED = 'latestAdded',
   RANDOM = 'random',
-  MAGIC_SHELF = 'magicShelf'
+  MAGIC_SHELF = 'magicShelf',
+  NEXT_IN_SERIES = 'nextInSeries'
 }
 
 export interface ScrollerConfig {
@@ -27,6 +28,7 @@ export const DEFAULT_DASHBOARD_CONFIG: DashboardConfig = {
   scrollers: [
     {id: '1', type: ScrollerType.LAST_READ, title: 'Continue Reading', enabled: true, order: 1, maxItems: DEFAULT_MAX_ITEMS},
     {id: '2', type: ScrollerType.LATEST_ADDED, title: 'Recently Added', enabled: true, order: 2, maxItems: DEFAULT_MAX_ITEMS},
-    {id: '3', type: ScrollerType.RANDOM, title: 'Discover Something New', enabled: true, order: 3, maxItems: DEFAULT_MAX_ITEMS}
+    {id: '3', type: ScrollerType.RANDOM, title: 'Discover Something New', enabled: true, order: 3, maxItems: DEFAULT_MAX_ITEMS},
+    {id: '4', type: ScrollerType.NEXT_IN_SERIES, title: 'Next in Series', enabled: true, order: 4, maxItems: DEFAULT_MAX_ITEMS}
   ]
 };
